@@ -1,0 +1,80 @@
+# 환경 설정
+environment: production
+
+# 서비스 URL 설정
+service:
+  base_url: https://www.tving.com
+  # 로그인 유형별 입력폼 경로.
+  # /account/login 은 소셜 선택 화면이라 입력폼이 없다. 아래 경로로 직접 들어간다.
+  # 두 폼의 DOM 구조는 동일해서 경로만 갈아끼우면 같은 코드로 처리된다.
+  login_paths:
+    tving: /account/login/tving
+    cj-one: /account/login/cj-one
+
+# 브라우저 설정
+browser:
+  type: chromium
+  headless: true
+  locale: ko-KR
+  timeout: 15000
+
+# 공통 탐색 설정 — 어떤 값을 찾든 동일하게 적용된다.
+extract:
+  # 하이드레이션 페이로드가 실린 script 태그.
+  hydration_selectors:
+    - "script#__NEXT_DATA__"
+    - 'script[type="application/json"]'
+  # 페이지 진입 후 API 응답이 도착할 여유.
+  settle_ms: 2000
+
+# 추출 대상 정의.
+#
+# 코드는 '무엇을 찾는지' 모른다. 찾을 키와 검증 규칙을 여기서 정의하므로,
+# 다른 값(userNo, memberId 등)이 필요하면 아래에 target 을 추가하고
+# --target 으로 지정하면 코드 수정 없이 동작한다.
+targets:
+  profile_no:
+    # 진입할 화면. 이 경로로 이동하는 동안의 응답을 관찰한다.
+    path: /my
+
+    # 확인된 응답 경로 (2026-08-30, 실제 로그인 세션).
+    #
+    # 이 경로를 고정한 이유가 중요하다. user/info 응답에는 profileNo 가
+    # 여러 개 들어 있다 — 현재 선택된 프로필(body.profile)과 계정에 딸린
+    # 프로필 목록(body.profileList[])이 함께 내려오며, 실제로 서로 다른
+    # 값 3개가 확인됐다. 키 이름만으로 찾으면 '먼저 나온 것'이 답이 되는데,
+    # 그건 서버가 키 순서를 바꾸면 다른 프로필 값으로 조용히 바뀐다는 뜻이다.
+    json_path: body.profile.profileNo
+
+    # 위 경로를 못 찾았을 때의 fallback. 응답 구조가 바뀌어도
+    # 키 이름이 살아 있으면 잡히도록 남겨 둔다.
+    keys:
+      - profileNo
+      - profile_no
+      - profileno
+
+    # 값 형식 검증. 숫자로만 이뤄졌는지 확인해
+    # 'undefined' / 'null' 같은 문자열이 성공으로 통과하는 것을 막는다.
+    pattern: "^[0-9]+$"
+
+    # URL 쿼리스트링·경로에 실린 경우를 잡는 패턴.
+    url_pattern: "[?&/](?:profileNo|profile_no)=?/?([0-9]+)"
+
+    # 값을 내려주는 endpoint. 앞에 있을수록 우선.
+    #
+    # 2026-08-30 확인: api.tving.com/v2/user/info 가 실제 출처다.
+    # 확인 전에는 후보를 넓게 뒀으나, 확정된 경로를 맨 앞에 두어
+    # 무관한 응답에 실린 값을 잡을 가능성을 줄였다.
+    endpoint_hints:
+      - /v2/user/info       # 확인됨 — 실제 출처
+      - /profile
+      - /user
+      - /my
+
+# 로그인 판정
+login:
+  # 실패 시 서버가 내려주는 문구. 이 문구는 비밀번호 오류와 로그인 유형
+  # 불일치를 구분해 주지 않는다.
+  failure_text: 회원정보를 찾을 수 없습니다
+  # 제출 후 결과가 화면에 뜰 때까지의 여유.
+  submit_wait_ms: 2000

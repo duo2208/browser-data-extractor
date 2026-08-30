@@ -1,0 +1,26 @@
+[project]
+name = "tving-extract"
+version = "0.1.0"
+description = "TVING 웹 로그인 후 마이페이지에서 profileNo 를 추출한다"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "playwright>=1.48.0",
+    "pyyaml>=6.0",
+]
+
+# 진입점을 스크립트로도 등록해 둔다.
+#   uv run extract-profile-no --id ... --password ...
+# python extract_profile_no.py 와 동작은 같다.
+[project.scripts]
+extract-profile-no = "extract_profile_no:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# 패키지는 extractors/ 하나이고 진입점 모듈은 루트에 둔다.
+# 명시하지 않으면 빌드 백엔드가 대상을 못 찾는다.
+[tool.hatch.build.targets.wheel]
+packages = ["extractors"]
+only-include = ["extractors", "extract_profile_no.py"]
